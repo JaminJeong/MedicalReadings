@@ -1,0 +1,4 @@
+# MedGemma 로컬 추론용 (GPU VRAM 8GB+ 필요)
+torch>=2.2.0
+transformers>=4.40.0
+accelerate>=0.28.0
