@@ -1,9 +1,5 @@
 import os
-import shutil
 import sys
-import tempfile
-import zipfile
-from io import BytesIO
 
 # 앱 루트를 sys.path에 추가 (컴포넌트/코어 임포트 보장)
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -12,8 +8,7 @@ import streamlit as st
 
 from components.ct_viewer import render_ct_viewer
 from components.xray_viewer import render_xray_viewer
-from core.ct_volume import build_volume
-from core.dicom_loader import load_ct_series, load_xray
+from core.dicom_loader import load_nifti, load_xray
 
 st.set_page_config(
     page_title="Viewer - Medical Readings",
@@ -73,42 +68,30 @@ if modality == "X-ray":
 
 # ── CT ───────────────────────────────────────────────────────────────────────
 else:
-    st.subheader("CT DICOM Viewer")
+    st.subheader("CT NIfTI Viewer")
 
-    st.info(
-        "CT DICOM 파일들이 담긴 폴더를 ZIP으로 압축하여 업로드하세요. "
-        "(폴더 내 .dcm 파일 포함)"
-    )
+    st.info("CT NIfTI 파일(.nii 또는 .nii.gz)을 업로드하세요.")
 
     uploaded = st.file_uploader(
-        "CT DICOM ZIP 파일 업로드",
-        type=["zip"],
+        "CT NIfTI 파일 업로드",
+        type=["nii", "gz"],
         key="ct_upload",
     )
 
     if uploaded is not None:
-        temp_dir = None
-        with st.spinner("CT 시리즈 로딩 중... 파일 수에 따라 시간이 걸릴 수 있습니다."):
+        with st.spinner("CT 볼륨 로딩 중..."):
             try:
-                temp_dir = tempfile.mkdtemp(prefix="ct_")
-                with zipfile.ZipFile(BytesIO(uploaded.read()), "r") as zf:
-                    zf.extractall(temp_dir)
-
-                datasets = load_ct_series(temp_dir)
-                volume, spacing = build_volume(datasets)
+                volume, spacing = load_nifti(uploaded.read(), uploaded.name)
 
                 st.session_state.modality = "ct"
                 st.session_state.ct_volume = volume
                 st.session_state.ct_spacing = spacing
                 st.success(
-                    f"로드 완료: {len(datasets)}장 슬라이스 | "
-                    f"볼륨: {volume.shape[2]}×{volume.shape[1]}×{volume.shape[0]}"
+                    f"로드 완료: 볼륨 {volume.shape[2]}×{volume.shape[1]}×{volume.shape[0]} "
+                    f"| 간격 {spacing[2]:.2f}×{spacing[1]:.2f}×{spacing[0]:.2f} mm"
                 )
             except Exception as e:
                 st.error(f"CT 로드 실패: {e}")
-            finally:
-                if temp_dir:
-                    shutil.rmtree(temp_dir, ignore_errors=True)
 
     if (
         st.session_state.get("modality") == "ct"
@@ -119,7 +102,7 @@ else:
             st.session_state.ct_spacing,
         )
     elif st.session_state.get("modality") != "ct":
-        st.info("CT DICOM ZIP 파일을 업로드하세요.")
+        st.info("CT NIfTI 파일을 업로드하세요.")
 
 # ── 하단 안내 ────────────────────────────────────────────────────────────────
 if st.session_state.get("current_image_bytes"):

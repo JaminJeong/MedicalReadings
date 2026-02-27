@@ -1,8 +1,9 @@
 # Core
 streamlit>=1.32.0
 
-# DICOM
+# DICOM / NIfTI
 pydicom>=2.4.0
+nibabel>=5.0.0
 
 # Image processing
 numpy>=1.26.0
